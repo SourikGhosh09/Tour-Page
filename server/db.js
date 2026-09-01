@@ -5,7 +5,9 @@ const { Pool } = pg;
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
-  max: Number(process.env.DB_POOL_SIZE || 10),
+  max: Number(process.env.DB_POOL_SIZE || (process.env.VERCEL ? 1 : 10)),
+  idleTimeoutMillis: 10_000,
+  connectionTimeoutMillis: 10_000,
 });
 
 export const query = (text, params) => pool.query(text, params);

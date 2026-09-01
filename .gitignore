@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .env
+.env*.local
+.vercel/
 *.log
 uploads/*
 !uploads/.gitkeep
