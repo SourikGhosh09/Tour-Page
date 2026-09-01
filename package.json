@@ -1,0 +1,38 @@
+{
+  "name": "ghure-ashi-journey",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k \"vite\" \"node --watch server/index.js\"",
+    "dev:web": "vite",
+    "dev:api": "node --watch server/index.js",
+    "build": "vite build",
+    "start": "node server/index.js",
+    "db:migrate": "node server/migrate.js",
+    "db:seed": "node server/seed.js",
+    "test": "node --test server/*.test.js"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest",
+    "typescript": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "gsap": "latest",
+    "lucide-react": "latest"
+    ,"bcryptjs": "latest"
+    ,"cookie-parser": "latest"
+    ,"cors": "latest"
+    ,"dotenv": "latest"
+    ,"express": "latest"
+    ,"express-rate-limit": "latest"
+    ,"helmet": "latest"
+    ,"jsonwebtoken": "latest"
+    ,"multer": "latest"
+    ,"pg": "latest"
+    ,"zod": "latest"
+    ,"concurrently": "latest"
+  },
+  "devDependencies": {}
+}

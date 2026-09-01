@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: ghure-ashi
+    runtime: node
+    plan: starter
+    buildCommand: npm ci && npm run build && npm run db:migrate && npm run db:seed
+    startCommand: npm start
+    healthCheckPath: /api/health
+    disk:
+      name: review-uploads
+      mountPath: /var/data/ghure-ashi-uploads
+      sizeGB: 5
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ghure-ashi-db
+          property: connectionString
+      - key: DATABASE_SSL
+        value: "true"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: APP_ORIGIN
+        sync: false
+      - key: UPLOAD_DIR
+        value: /var/data/ghure-ashi-uploads
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+databases:
+  - name: ghure-ashi-db
+    plan: basic-256mb
+    databaseName: ghure_ashi
+    user: ghure_ashi
