@@ -15,8 +15,9 @@ import { mkdirSync } from 'node:fs';
 import { open, unlink } from 'node:fs/promises';
 import 'dotenv/config';
 import { query, transaction } from './db.js';
-import { bookingSchema, bookingStatusSchema, businessProfileSchema, departureSchema, destinationSchema, gallerySchema, guestReviewMediaSchema, guestReviewSchema, loginSchema, motionSchema, packageSchema, reviewSchema, sceneSchema, staffCreateSchema, staffUpdateSchema, validate } from './validation.js';
+import { bookingSchema, bookingStatusSchema, businessProfileSchema, departureSchema, destinationSchema, gallerySchema, guestReviewMediaSchema, guestReviewSchema, loginSchema, motionSchema, packageSchema, reviewSchema, reviewModerationSchema, sceneSchema, staffCreateSchema, staffUpdateSchema, validate } from './validation.js';
 import { clearSession, createSession, requireAdmin, requireMaster, requirePermission } from './auth.js';
+import { createGuestReview } from './review-submission.js';
 import { deleteBooking, deletePackage } from './admin-delete.js';
 
 const app = express();
@@ -82,6 +83,7 @@ app.post('/api/reviews',reviewLimit,upload.array('media',5),async(req,res,next)=
   let cleanupMedia=[];
   const cleanup=async()=>{await cleanupIncomingFiles(req.files||[]);await removeStoredMedia(cleanupMedia);};
   try{
+    if(process.env.VERCEL&&!blobStorageEnabled&&(req.files||[]).length)throw Object.assign(new Error('Photo and video uploads need persistent storage. Please ask the administrator to configure Vercel Blob.'),{status:503,code:'MEDIA_STORAGE_UNAVAILABLE'});
     await verifyUploadedMedia(req.files||[]);
     const directMedia=Array.isArray(req.body?.media)?req.body.media:[];
     const reviewFields={...req.body};delete reviewFields.media;
@@ -99,9 +101,8 @@ app.post('/api/reviews',reviewLimit,upload.array('media',5),async(req,res,next)=
     }else{
       for(const file of req.files||[]){const url=await persistUploadedFile(file,'reviews',allowedMedia);cleanupMedia.push(url);mediaRows.push({url,mimeType:file.mimetype,originalName:file.originalname.slice(0,255)});}
     }
-    const d=parsed.data;
-    const review=await transaction(async client=>{const r=await client.query(`INSERT INTO reviews(traveller_name,guest_email,destination,travelled_on,rating,quote,verified,published) VALUES($1,$2,$3,$4,$5,$6,false,false) RETURNING id`,[d.travellerName,d.guestEmail,d.destination,d.travelledOn,d.rating,d.quote]);for(let i=0;i<mediaRows.length;i++){const media=mediaRows[i];await client.query(`INSERT INTO review_media(review_id,media_type,media_url,mime_type,original_name,display_order) VALUES($1,$2,$3,$4,$5,$6)`,[r.rows[0].id,media.mimeType.startsWith('video/')?'video':'image',media.url,media.mimeType,media.originalName,i]);}return r.rows[0];});
-    res.status(201).json({id:review.id,message:'Thank you. Your memory was sent for review.'});
+    const review=await transaction(client=>createGuestReview(client,parsed.data,mediaRows));
+    res.status(201).json({id:review.id,published:review.published,message:review.published?'Thank you. Your review is now published.':'Thank you. Your memory was sent for review. It will appear here after the team approves it.'});
   }catch(e){await cleanup();next(e);}
 });
 
@@ -141,6 +142,8 @@ app.get('/api/admin/data', requireAdmin, async (req,res,next)=>{try{
   res.json({destinations:allowed('destinations')||allowed('packages')||allowed('story')||allowed('media')?destinations.rows:[],packages:allowed('packages')||allowed('departures')||allowed('story')?packagesResult.rows:[],departures:allowed('departures')||allowed('overview')?departures.rows:[],bookings:allowed('bookings')||allowed('overview')?bookings.rows:[],scenes:allowed('story')?scenes.rows:[],gallery:allowed('media')?gallery.rows:[],reviews:allowed('media')?reviews.rows:[],motion:allowed('settings')?settings.rows[0]?.value||{intensity:'standard',intro:true,parallax:true,pageTransitions:true}:{intensity:'standard',intro:false,parallax:false,pageTransitions:false},businessProfile:{...defaultBusinessProfile,...profileSettings.rows[0]?.value}});
 }catch(e){next(e);}});
 app.get('/api/admin/bookings', requireAdmin, requirePermission('bookings'), async (_req,res,next)=>{try{const result=await query(`SELECT b.reference,b.customer_name AS "customerName",b.customer_email AS "customerEmail",b.traveller_count AS "travellerCount",b.amount_paise AS "amountPaise",b.status,b.created_at AS "createdAt",p.name AS package FROM bookings b JOIN departures d ON d.id=b.departure_id JOIN packages p ON p.id=d.package_id ORDER BY b.created_at DESC LIMIT 100`);res.json({bookings:result.rows});}catch(e){next(e);}});
+app.get('/api/admin/settings/review-moderation',requireAdmin,requirePermission('media'),async(_req,res,next)=>{try{const r=await query("SELECT value FROM site_settings WHERE key='reviewModeration'");res.json({autoApprove:r.rows[0]?.value?.autoApprove===true});}catch(e){next(e);}});
+app.put('/api/admin/settings/review-moderation',requireAdmin,requirePermission('media'),validate(reviewModerationSchema),async(req,res,next)=>{try{await transaction(async client=>{await client.query(`INSERT INTO site_settings(key,value,updated_at) VALUES('reviewModeration',$1,now()) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=now()`,[JSON.stringify(req.validated)]);await client.query(`INSERT INTO admin_audit_log(actor_id,action,target_type,target_id,metadata) VALUES($1,'UPDATE_REVIEW_MODERATION','setting','reviewModeration',$2)`,[req.admin.id,JSON.stringify(req.validated)]);});res.json(req.validated);}catch(e){next(e);}});
 app.put('/api/admin/settings/motion', requireAdmin, requirePermission('settings'), validate(motionSchema), async(req,res,next)=>{try{await query(`INSERT INTO site_settings(key,value,updated_at) VALUES('motion',$1,now()) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=now()`,[JSON.stringify(req.validated)]);res.json({motion:req.validated});}catch(e){next(e);}});
 app.put('/api/admin/settings/business',requireAdmin,requirePermission('settings'),validate(businessProfileSchema),async(req,res,next)=>{try{const current=await query("SELECT value FROM site_settings WHERE key='businessProfile'");const oldLogo=current.rows[0]?.value?.logoUrl;await transaction(async client=>{await client.query(`INSERT INTO site_settings(key,value,updated_at) VALUES('businessProfile',$1,now()) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=now()`,[JSON.stringify(req.validated)]);await client.query(`INSERT INTO admin_audit_log(actor_id,action,target_type,target_id) VALUES($1,'UPDATE_BUSINESS_PROFILE','site_settings','businessProfile')`,[req.admin.id]);});if(oldLogo&&oldLogo!==req.validated.logoUrl)await removeStoredMedia([oldLogo]);res.json({businessProfile:req.validated});}catch(e){next(e);}});
 app.get('/api/admin/logo-uploads/mode',requireAdmin,requirePermission('settings'),(_req,res)=>res.json({mode:blobStorageEnabled?'blob':'multipart'}));

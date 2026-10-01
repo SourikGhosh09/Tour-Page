@@ -82,6 +82,6 @@ Bookings currently reserve inventory as `pending` and return a provider-required
 
 - Use managed PostgreSQL backups and HTTPS.
 - Set a random `JWT_SECRET` of at least 32 characters.
-- Review submissions remain private until an authorized admin publishes them.
+- Review submissions remain pending until an authorized admin publishes them by default. In **Gallery & reviews → Review approval**, enable **Automatically approve new reviews** to publish every new submission immediately. The saved, audited toggle can be switched off at any time; existing pending reviews still require approval. Automatic approval does not mark a traveller as verified.
 - Review media accepts JPG, PNG, WebP, MP4, and WebM, with five files per review and a 25 MB per-file limit.
 - Pending bookings should be expired by a scheduled job before launch so abandoned reservations release seats.
