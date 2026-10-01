@@ -12,6 +12,7 @@ A deploy-ready full-stack travel website with a cinematic React/GSAP storefront,
 - Database-backed business profile controls for the logo and contact information
 - Guest review submissions with moderated photo and video uploads
 - Admin review editing, publishing, verification, and audited deletion
+- In Gallery & reviews, explicit Edit review and Delete controls remain available for every pending and published review, including automatically approved submissions, on desktop and mobile.
 - Validation, rate limiting, secure cookies, and browser security headers
 - Vercel, Docker, and Render deployment configuration
 
