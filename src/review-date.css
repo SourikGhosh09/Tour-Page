@@ -1,0 +1,9 @@
+.review-date-field{border:0;padding:0;margin:0;min-width:0;display:grid;gap:.5rem;color:#526572;font-size:.7rem}
+.review-date-field legend{margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.07em}
+.review-date-field legend small{text-transform:none;letter-spacing:0}
+.review-date-selects{display:grid;grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr) minmax(0,1fr);gap:.5rem}
+.review-date-selects label{display:grid;gap:.35rem;font-size:.65rem}
+.review-date-selects select{width:100%;min-width:0;border:1px solid #ced8dc;background:#f8faf7;color:#102b44;padding:.7rem .35rem;font:inherit;font-size:.8rem}
+.review-date-selects select:focus-visible{outline:2px solid #e1ad38;outline-offset:2px}
+.review-date-field>button{justify-self:start;background:none;border:0;color:#9e2228;text-decoration:underline;padding:.3rem 0;cursor:pointer}
+.review-date-field>small{text-transform:none;letter-spacing:0;line-height:1.5}
