@@ -7,6 +7,7 @@ export const bookingSchema = z.object({
   customerPhone: z.string().trim().regex(/^\+?[0-9 ()-]{8,20}$/),
   travellers: z.array(z.object({ fullName: cleanText(100), age: z.coerce.number().int().min(1).max(120), type: z.enum(['adult','child']) }).strict()).min(1).max(12)
 }).strict();
+export const reviewModerationSchema=z.object({autoApprove:z.boolean()}).strict();
 export const motionSchema = z.object({ intensity: z.enum(['low','standard','cinematic']), intro: z.boolean(), parallax: z.boolean(), pageTransitions: z.boolean() }).strict();
 const optionalEmail=z.union([z.string().trim().toLowerCase().email().max(254),z.literal('')]);
 const optionalPhone=z.union([z.string().trim().regex(/^\+?[0-9 ()-]{8,20}$/),z.literal('')]);
